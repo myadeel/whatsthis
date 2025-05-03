@@ -92,7 +92,7 @@
       });
 
     async function captureAndExplain() {
-      resultDiv.innerHTML = '<div class="loading">Analyzing image, please wait...</div>';
+      resultDiv.innerHTML = '<div class="loading">Analyzing photo, please wait...</div>';
 
       const ctx = canvas.getContext("2d");
       canvas.width = video.videoWidth;
@@ -111,6 +111,7 @@
         });
 
         const data = await res.json();
+        console.log("[GPT Debug] Response:", data);
 
         if (data?.choices?.[0]?.message?.content) {
           const lines = data.choices[0].message.content.split("\n");
@@ -118,11 +119,11 @@
             <p style="margin: 6px 0;">${line}</p>
           `).join("");
         } else {
-          resultDiv.innerHTML = "<div class='loading'>Hmm... I couldn’t figure that out. Try another photo.</div>";
+          resultDiv.innerHTML = "<div class='loading'>I couldn't figure that out. Try again with a clearer or closer photo.</div>";
         }
       } catch (err) {
-        console.error(err);
-        resultDiv.innerHTML = "<div class='loading'>Something went wrong. Please try again.</div>";
+        console.error("[GPT Debug] Error:", err);
+        resultDiv.innerHTML = "<div class='loading'>Something went wrong. Please try again in a few seconds.</div>";
       }
     }
   </script>
