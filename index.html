@@ -101,7 +101,7 @@
       const base64Image = canvas.toDataURL("image/jpeg");
 
       try {
-        const res = await fetch("https://whatsthis-one.vercel.app/api/explain-object", {
+        const res = await fetch("/api/explain-object", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
