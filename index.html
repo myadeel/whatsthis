@@ -28,9 +28,25 @@
     }
     h2 {
       font-size: 24px;
+      margin-bottom: 5px;
+    }
+    .subtitle {
+      font-size: 16px;
+      color: #666;
       margin-bottom: 15px;
     }
+    #cameraPlaceholder {
+      width: 100%;
+      background-color: #eef1f5;
+      border-radius: 12px;
+      padding: 40px 10px;
+      color: #666;
+      font-size: 16px;
+      margin-bottom: 10px;
+      border: 2px dashed #ccc;
+    }
     video {
+      display: none;
       width: 100%;
       border-radius: 12px;
       margin-bottom: 10px;
@@ -65,14 +81,22 @@
     #result p {
       margin: 0 0 10px 0;
     }
+    .loading {
+      font-size: 16px;
+      color: #0066ff;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>What’s This?</h2>
+    <div class="subtitle">AI Object Explainer</div>
+    <div id="cameraPlaceholder">Upload image from gallery or take photo to allow camera access</div>
     <video id="camera" autoplay playsinline></video>
+    <input type="file" id="imageUpload" accept="image/*" style="width: 100%; margin: 10px 0;" />
     <canvas id="canvas"></canvas>
-    <button onclick="captureAndExplain()">Snap & Explain</button>
+    <button onclick="startCameraAndCapture()">Snap from Camera</button>
     <div id="result"></div>
   </div>
 
@@ -80,24 +104,55 @@
     const video = document.getElementById("camera");
     const canvas = document.getElementById("canvas");
     const resultDiv = document.getElementById("result");
+    const placeholder = document.getElementById("cameraPlaceholder");
+    const imageUpload = document.getElementById("imageUpload");
 
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
-      .then(stream => {
+    imageUpload.addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        resultDiv.innerHTML = '<div class="loading">Analyzing photo, please wait...</div>';
+        try {
+          const res = await fetch("/api/explain-object", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageDataURL: reader.result })
+          });
+          const data = await res.json();
+          if (data?.choices?.[0]?.message?.content) {
+            const paragraphs = data.choices[0].message.content.trim().split("\n\n");
+            resultDiv.innerHTML = paragraphs.map(p => `<p>${p.trim()}</p>`).join('');
+          } else {
+            resultDiv.innerHTML = "<div class='loading'>I couldn't figure that out. Try again with a clearer or closer photo.</div>";
+          }
+        } catch (err) {
+          console.error("[GPT Debug] Error:", err);
+          resultDiv.innerHTML = "<div class='loading'>Something went wrong. Please try again in a few seconds.</div>";
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    async function startCameraAndCapture() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
         video.srcObject = stream;
-      })
-      .catch(err => {
-        alert("Camera not available or permission denied.");
+        video.style.display = "block";
+        placeholder.style.display = "none";
+        setTimeout(() => captureAndExplain(), 1500);
+      } catch (err) {
+        alert("Camera access denied or not available.");
         console.error(err);
-      });
+      }
+    }
 
     async function captureAndExplain() {
       resultDiv.innerHTML = '<div class="loading">Analyzing photo, please wait...</div>';
-
       const ctx = canvas.getContext("2d");
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
       const base64Image = canvas.toDataURL("image/jpeg");
 
       try {
@@ -108,10 +163,7 @@
           },
           body: JSON.stringify({ imageDataURL: base64Image })
         });
-
         const data = await res.json();
-        console.log("[GPT Debug] Response:", data);
-
         if (data?.choices?.[0]?.message?.content) {
           const paragraphs = data.choices[0].message.content.trim().split("\n\n");
           resultDiv.innerHTML = paragraphs.map(p => `<p>${p.trim()}</p>`).join('');
