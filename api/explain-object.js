@@ -12,6 +12,8 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log("✅ Received imageDataURL.");
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -34,9 +36,16 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    res.status(200).json(data);
+    console.log("✅ OpenAI response:", JSON.stringify(data));
+
+    if (data?.choices?.[0]?.message?.content) {
+      res.status(200).json(data);
+    } else {
+      console.warn("⚠️ No usable content in OpenAI response.");
+      res.status(200).json({ choices: [ { message: { content: "Sorry, I couldn’t identify that object. Try using a clearer or closer photo." } } ] });
+    }
   } catch (error) {
-    console.error("OpenAI API error:", error);
-    res.status(500).json({ error: "Failed to process image." });
+    console.error("❌ Error calling OpenAI API:", error);
+    res.status(500).json({ error: "Failed to analyze image. Please try again later." });
   }
 }
