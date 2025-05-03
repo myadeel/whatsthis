@@ -54,16 +54,16 @@
     }
     #result {
       background-color: #f0f4f8;
-      padding: 14px;
-      border-radius: 10px;
-      margin-top: 12px;
+      padding: 16px;
+      border-radius: 12px;
+      margin-top: 16px;
       text-align: left;
-      white-space: pre-wrap;
       font-size: 15px;
+      line-height: 1.6;
+      color: #333;
     }
-    .loading {
-      font-style: italic;
-      color: #555;
+    #result p {
+      margin: 0 0 10px 0;
     }
   </style>
 </head>
@@ -81,7 +81,6 @@
     const canvas = document.getElementById("canvas");
     const resultDiv = document.getElementById("result");
 
-    // Initialize camera
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
       .then(stream => {
         video.srcObject = stream;
@@ -114,10 +113,8 @@
         console.log("[GPT Debug] Response:", data);
 
         if (data?.choices?.[0]?.message?.content) {
-          const lines = data.choices[0].message.content.split("\n");
-          resultDiv.innerHTML = lines.map(line => `
-            <p style="margin: 6px 0;">${line}</p>
-          `).join("");
+          const paragraphs = data.choices[0].message.content.trim().split("\n\n");
+          resultDiv.innerHTML = paragraphs.map(p => `<p>${p.trim()}</p>`).join('');
         } else {
           resultDiv.innerHTML = "<div class='loading'>I couldn't figure that out. Try again with a clearer or closer photo.</div>";
         }
