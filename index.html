@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What’s This? - AI Object Explainer</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      background-color: #f7f9fc;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .container {
+      width: 95%;
+      max-width: 450px;
+      background: white;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    h2 {
+      font-size: 24px;
+      margin-bottom: 15px;
+    }
+    video {
+      width: 100%;
+      border-radius: 12px;
+      margin-bottom: 10px;
+    }
+    canvas {
+      display: none;
+    }
+    button {
+      background-color: #0066ff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 16px;
+      width: 100%;
+      margin: 10px 0;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0052cc;
+    }
+    #result {
+      background-color: #f0f4f8;
+      padding: 14px;
+      border-radius: 10px;
+      margin-top: 12px;
+      text-align: left;
+      white-space: pre-wrap;
+      font-size: 15px;
+    }
+    .loading {
+      font-style: italic;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>What’s This?</h2>
+    <video id="camera" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+    <button onclick="captureAndExplain()">Snap & Explain</button>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const video = document.getElementById("camera");
+    const canvas = document.getElementById("canvas");
+    const resultDiv = document.getElementById("result");
+
+    // Initialize camera
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
+      .then(stream => {
+        video.srcObject = stream;
+      })
+      .catch(err => {
+        alert("Camera not available or permission denied.");
+        console.error(err);
+      });
+
+    async function captureAndExplain() {
+      resultDiv.innerHTML = '<div class="loading">Analyzing image, please wait...</div>';
+
+      const ctx = canvas.getContext("2d");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const base64Image = canvas.toDataURL("image/jpeg");
+
+      try {
+        const res = await fetch("https://whatsthis-one.vercel.app/api/explain-object", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ imageDataURL: base64Image })
+        });
+
+        const data = await res.json();
+
+        if (data?.choices?.[0]?.message?.content) {
+          const lines = data.choices[0].message.content.split("\n");
+          resultDiv.innerHTML = lines.map(line => `
+            <p style="margin: 6px 0;">${line}</p>
+          `).join("");
+        } else {
+          resultDiv.innerHTML = "<div class='loading'>Hmm... I couldn’t figure that out. Try another photo.</div>";
+        }
+      } catch (err) {
+        console.error(err);
+        resultDiv.innerHTML = "<div class='loading'>Something went wrong. Please try again.</div>";
+      }
+    }
+  </script>
+</body>
+</html>
